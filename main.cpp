@@ -1,8 +1,8 @@
 /*
- * Full Name:     [Your Name]
- * Student ID:    [Your NUID]
+ * Full Name:     Jeremy Calle
+ * Student ID:    002581809
  * Course:        EECE 2140 - Computing Fundamentals for Engineers
- * Section:       [Your Section]
+ * Section:       Section 3
  * Semester:      Fall 2026
  * Assignment:    Homework 5 - Signal Workbench
  * Compilation:   g++ -std=c++11 main.cpp -o main
@@ -238,7 +238,7 @@ bool readSignalNumber(const std::vector<Signal>& bank, const std::string& prompt
 
 // TODO 1: default constructor
 //   Behavior:   Creates an empty signal: a signal with 0 samples.
-Signal::Signal()
+Signal::Signal() : samples(nullptr), length(0)
 {
 }
 
@@ -246,17 +246,36 @@ Signal::Signal()
 //   Parameters: theLength -- the number of samples (theLength >= 0).
 //   Behavior:   Creates a signal with theLength samples, every one of
 //               which is 0.
-Signal::Signal(int theLength)
+Signal::Signal(int theLength) : samples(nullptr), length(theLength)
 {
+    if (length > 0)
+    {
+        samples = new int[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            samples[i] = 0;
+        }
+    }
 }
 
 // TODO 3: Signal(const std::vector<int>& values)
 //   Parameters: values -- the sample values, in order (not modified).
 //   Behavior:   Creates a signal with values.size() samples; sample i is
 //               values[i].
-Signal::Signal(const std::vector<int>& values)
+Signal::Signal(const std::vector<int>& values) : samples(nullptr), length(static_cast<int>(values.size()))
 {
+    if (length > 0)
+    {
+        samples = new int[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            samples[i] = values[i];
+        }
+    }
 }
+
 
 // TODO 4: copy constructor
 //   Parameters: other -- the signal to copy (not modified).
@@ -264,8 +283,17 @@ Signal::Signal(const std::vector<int>& values)
 //               other. Afterward the two signals are independent:
 //               changing a sample of one never changes the other, and
 //               destroying one never affects the other.
-Signal::Signal(const Signal& other)
+Signal::Signal(const Signal& other) : samples(nullptr), length(other.length)
 {
+    if (length > 0)
+    {
+        samples = new int[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            samples[i] = other.samples[i];
+        }
+    }
 }
 
 // TODO 5: destructor
@@ -274,6 +302,7 @@ Signal::Signal(const Signal& other)
 //               exactly once.
 Signal::~Signal()
 {
+    delete [] samples;
 }
 
 // TODO 6: assignment operator
@@ -288,6 +317,24 @@ Signal::~Signal()
 //               (a = b = c).
 Signal& Signal::operator =(const Signal& right)
 {
+    if (this != &right)
+    {
+        delete [] samples;
+
+        length = right.length;
+        samples = nullptr;
+
+        if (length > 0)
+        {
+            samples = new int[length];
+
+            for (int i = 0; i < length; i++)
+            {
+                samples[i] = right.samples[i];
+            }
+        }
+    }
+
     return *this;
 }
 
@@ -295,7 +342,7 @@ Signal& Signal::operator =(const Signal& right)
 //   Returns:    The number of samples in the signal.
 int Signal::getLength() const
 {
-    return -1;
+    return length;
 }
 
 // TODO 8: index operator
@@ -309,7 +356,14 @@ int Signal::getLength() const
 //               with exit status 1.
 int& Signal::operator [](int index)
 {
-    return length;
+    if (index < 0 || index >= length)
+    {
+        std::cout << "Sample index out of range: "
+                  << index << std::endl;
+        exit(1);
+    }
+
+    return samples[index];
 }
 
 // TODO 9: operator * (member)
@@ -320,9 +374,15 @@ int& Signal::operator [](int index)
 //               result with the Signal(int theLength) constructor.
 Signal Signal::operator *(int gain) const
 {
-    return Signal();
-}
+    Signal result(length);
 
+    for (int i = 0; i < length; i++)
+    {
+        result.samples[i] = samples[i] * gain;
+    }
+
+    return result;
+}
 // TODO 10: operator + (friend)
 //   Parameters: a, b -- the two signals to mix (not modified).
 //   Returns:    A new signal as long as the longer of a and b, in which
@@ -332,7 +392,29 @@ Signal Signal::operator *(int gain) const
 //               Signal(int theLength) constructor.
 Signal operator +(const Signal& a, const Signal& b)
 {
-    return Signal();
+    int maxLength = a.length;
+
+    if (b.length > maxLength)
+    {
+        maxLength = b.length;
+    }
+
+    Signal result(maxLength);
+
+    for (int i = 0; i < maxLength; i++)
+    {
+        if (i < a.length)
+        {
+            result.samples[i] += a.samples[i];
+        }
+
+        if (i < b.length)
+        {
+            result.samples[i] += b.samples[i];
+        }
+    }
+
+    return result;
 }
 
 // TODO 11: unary operator - (friend)
@@ -342,7 +424,14 @@ Signal operator +(const Signal& a, const Signal& b)
 //               result with the Signal(int theLength) constructor.
 Signal operator -(const Signal& s)
 {
-    return Signal();
+    Signal result(s.length);
+
+    for (int i = 0; i < s.length; i++)
+    {
+        result.samples[i] = -s.samples[i];
+    }
+
+    return result;
 }
 
 // TODO 12: operator == (friend)
@@ -352,7 +441,20 @@ Signal operator -(const Signal& s)
 //               empty signals are equal.
 bool operator ==(const Signal& a, const Signal& b)
 {
-    return false;
+    if (a.length != b.length)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < a.length; i++)
+    {
+        if (a.samples[i] != b.samples[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // TODO 13: operator << (friend)
@@ -367,6 +469,20 @@ bool operator ==(const Signal& a, const Signal& b)
 //   Returns:    outs, so that << can be chained.
 std::ostream& operator <<(std::ostream& outs, const Signal& s)
 {
+    outs << "[";
+
+    for (int i = 0; i < s.length; i++)
+    {
+        if (i > 0)
+        {
+            outs << ", ";
+        }
+
+        outs << s.samples[i];
+    }
+
+    outs << "]";
+
     return outs;
 }
 
@@ -384,5 +500,82 @@ std::ostream& operator <<(std::ostream& outs, const Signal& s)
 //               constructor.
 bool parseSignal(const std::string& text, Signal& result)
 {
-    return false;
+    std::vector<int> values;
+    int i = 0;
+    int n = static_cast<int>(text.length());
+
+    while (i < n && text[i] == ' ')
+    {
+        i++;
+    }
+
+    if (i == n)
+    {
+        result = Signal(values);
+        return true;
+    }
+
+    while (i < n)
+    {
+        bool negative = false;
+
+        if (text[i] == '-')
+        {
+            negative = true;
+            i++;
+        }
+
+        int start = i;
+        int digits = 0;
+
+        while (i < n && text[i] >= '0' && text[i] <= '9')
+        {
+            digits++;
+            i++;
+        }
+
+        if (digits == 0 || digits > MAX_DIGITS)
+        {
+            return false;
+        }
+
+        int value = std::stoi(text.substr(start, digits));
+
+        if (negative)
+        {
+            value = -value;
+        }
+
+        values.push_back(value);
+
+        while (i < n && text[i] == ' ')
+        {
+            i++;
+        }
+
+        if (i == n)
+        {
+            break;
+        }
+
+        if (text[i] != ',')
+        {
+            return false;
+        }
+
+        i++;
+
+        while (i < n && text[i] == ' ')
+        {
+            i++;
+        }
+
+        if (i == n)
+        {
+            return false;
+        }
+    }
+
+    result = Signal(values);
+    return true;
 }
